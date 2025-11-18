@@ -1,14 +1,82 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
-import { Calendar, Clock, TrainTrack, User, Users } from "lucide-react";
+import { User, Bell, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { TrainingCalendar } from "@/components/Calendar";
-import { Statistics } from "@/components/Statistics";
+import { AvailableTrainings } from "@/components/AvailableTrainings";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+} from "firebase/firestore";
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  date: string;
+  read: boolean;
+}
 
 const Dashboard: React.FC = () => {
   const { currentUser } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!currentUser) return;
+
+      try {
+        // In a real app, you would fetch from Firestore
+        // For now, we'll use mock data
+        const mockNotifications: Notification[] = [
+          {
+            id: "1",
+            title: "नयाँ तालिम कार्यक्रम",
+            message: "वन संरक्षण तालिम कार्यक्रम अर्को हप्ता सुरु हुनेछ।",
+            date: new Date().toISOString(),
+            read: false,
+          },
+          {
+            id: "2",
+            title: "सिस्टम अपडेट",
+            message: "सिस्टम अपडेट गरिएको छ। कृपया नयाँ सुविधाहरू हेर्नुहोस्।",
+            date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+            read: true,
+          },
+          {
+            id: "3",
+            title: "महत्वपूर्ण सूचना",
+            message: "कृपया आफ्नो प्रोफाइल जानकारी अपडेट गर्नुहोस्।",
+            date: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+            read: true,
+          },
+        ];
+
+        setNotifications(mockNotifications);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+      }
+    };
+
+    fetchNotifications();
+  }, [currentUser]);
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const markAsRead = (id: string) => {
+    setNotifications(
+      notifications.map((notification) =>
+        notification.id === id ? { ...notification, read: true } : notification
+      )
+    );
+  };
 
   return (
     <Layout>
@@ -23,141 +91,74 @@ const Dashboard: React.FC = () => {
               {currentUser?.displayName || currentUser?.email?.split("@")[0]}
             </p>
           </div>
-          <div className="bg-[#0b5345] text-white rounded-full px-4 py-1 text-sm">
-            कर्मचारी ID: NDF{Math.floor(10000 + Math.random() * 90000)}
-          </div>
-        </div>
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <button
+                className="relative p-2 rounded-full hover:bg-gray-100"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell className="h-6 w-6 text-gray-600" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                तालिम कार्यक्रम
-              </CardTitle>
-              <TrainTrack className="h-5 w-5 text-[#0b5345]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">5</div>
-              <p className="text-xs text-gray-600">हालसम्म उपस्थित</p>
-            </CardContent>
-          </Card>
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-10 border border-gray-200">
+                  <div className="p-3 border-b border-gray-200 flex justify-between items-center">
+                    <h3 className="font-medium">सूचनाहरू</h3>
+                    <button onClick={() => setShowNotifications(false)}>
+                      <X className="h-4 w-4 text-gray-500" />
+                    </button>
+                  </div>
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">
+                        कुनै सूचना छैन
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-3 border-b border-gray-100 ${
+                            !notification.read ? "bg-blue-50" : ""
+                          }`}
+                          onClick={() => markAsRead(notification.id)}
+                        >
+                          <div className="flex justify-between">
+                            <h4 className="font-medium">
+                              {notification.title}
+                            </h4>
+                            <span className="text-xs text-gray-500">
+                              {new Date(notification.date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">
+                            {notification.message}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                पदस्थापन अवधि
-              </CardTitle>
-              <Calendar className="h-5 w-5 text-[#0b5345]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">3 वर्ष</div>
-              <p className="text-xs text-gray-600">हालको पदमा</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                आगामी तालिम
-              </CardTitle>
-              <Clock className="h-5 w-5 text-[#0b5345]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">10 दिन</div>
-              <p className="text-xs text-gray-600">वन संरक्षण सम्मेलन</p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                टिम सदस्यहरू
-              </CardTitle>
-              <Users className="h-5 w-5 text-[#0b5345]" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-gray-600">तपाईंको टिममा</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2">
-            <Statistics />
-          </div>
-          <div>
-            <TrainingCalendar />
+            <div className="bg-[#0b5345] text-white rounded-full px-4 py-1 text-sm">
+              कर्मचारी ID: NDF{Math.floor(10000 + Math.random() * 90000)}
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card className="col-span-1 lg:col-span-2">
             <CardHeader>
-              <CardTitle>आगामी तालिम कार्यक्रमहरू</CardTitle>
+              <CardTitle>उपलब्ध तालिम कार्यक्रमहरू</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="border-b pb-3">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3 className="font-medium">वन संरक्षण सम्मेलन</h3>
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded">
-                      आगामी
-                    </span>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-2">
-                    वन संरक्षणमा नवीन पद्धतिहरू र प्रविधिहरू सिक्नुहोस्
-                  </p>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <Calendar className="h-3 w-3 mr-1" /> 2025-05-15
-                    <span className="mx-3">|</span>
-                    <Clock className="h-3 w-3 mr-1" /> 10:00 - 16:00
-                  </div>
-                </div>
-
-                <div className="border-b pb-3">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3 className="font-medium">वन्यजन्तु संरक्षण कार्यशाला</h3>
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                      भर्ना खुला
-                    </span>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-2">
-                    वन्यजन्तु चोरी शिकारी विरुद्ध रणनीति र अनुगमन विधिहरू
-                  </p>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <Calendar className="h-3 w-3 mr-1" /> 2025-06-10
-                    <span className="mx-3">|</span>
-                    <Clock className="h-3 w-3 mr-1" /> 09:30 - 15:00
-                  </div>
-                </div>
-
-                <div className="border-b pb-3">
-                  <div className="flex justify-between items-center mb-1">
-                    <h3 className="font-medium">प्रकोप व्यवस्थापन प्रशिक्षण</h3>
-                    <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
-                      सीमित स्थान
-                    </span>
-                  </div>
-                  <p className="text-gray-600 text-sm mb-2">
-                    वनमा आगलागी र अन्य प्रकोपहरू व्यवस्थापनको लागि तालिम
-                  </p>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <Calendar className="h-3 w-3 mr-1" /> 2025-07-22
-                    <span className="mx-3">|</span>
-                    <Clock className="h-3 w-3 mr-1" /> 09:00 - 17:00
-                  </div>
-                </div>
-
-                <div>
-                  <Link
-                    to="/training"
-                    className="text-[#0b5345] text-sm hover:underline"
-                  >
-                    सबै तालिम कार्यक्रमहरू हेर्नुहोस्
-                  </Link>
-                </div>
-              </div>
+              <AvailableTrainings />
             </CardContent>
           </Card>
 

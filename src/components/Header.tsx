@@ -17,16 +17,24 @@ const Header: React.FC = () => {
     }
   };
 
+  // Handle logo click to refresh the page
+  const handleLogoClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(0);
+  };
+
   return (
     <header className="bg-[#0b5345] text-white shadow-md">
       <div className="container mx-auto px-4 py-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Emblem_of_Nepal.svg/1500px-Emblem_of_Nepal.svg.png"
-              alt="Forest Department Logo"
-              className="h-12 w-12 object-cover rounded-full border-2 border-white"
-            />
+            <a href="/" onClick={handleLogoClick}>
+              <img
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Emblem_of_Nepal.svg/1500px-Emblem_of_Nepal.svg.png"
+                alt="Forest Department Logo"
+                className="h-12 w-12 object-cover rounded-full border-2 border-white cursor-pointer"
+              />
+            </a>
             <div>
               <h1 className="text-xl font-bold">
                 वन अनुसन्धान तथा प्रशिक्षण केन्द्र
